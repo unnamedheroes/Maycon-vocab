@@ -2,8 +2,7 @@
 //
 // Converts an uploaded file into plain text, regardless of its format.
 // Relies on mammoth.js and pdf.js, both loaded as global scripts from
-// index.html (see APP_SHELL in service-worker.js for how they stay
-// available offline).
+// index.html (from a CDN, so this needs an internet connection).
 
 export async function extractText(file) {
   const name = file.name.toLowerCase();

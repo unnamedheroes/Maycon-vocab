@@ -27,12 +27,17 @@ function uid() {
   return crypto.randomUUID ? crypto.randomUUID() : 'id-' + Date.now() + '-' + Math.random().toString(16).slice(2);
 }
 
+function docsById() {
+  return new Map(state.documents.map(d => [d.id, d]));
+}
+
 async function init() {
   cacheEls();
   bindEvents();
-  registerServiceWorker();
 
-  state.words = await db.getAllWords();
+  // dedupeWords() also repairs any duplicate rows left over from an earlier,
+  // buggier version of the app -- safe to run on every load.
+  state.words = await db.dedupeWords();
   state.documents = await db.getAllDocuments();
   refreshFilterOptions();
   render();
@@ -72,10 +77,15 @@ function bindEvents() {
   els.viewDocsBtn.addEventListener('click', () => switchView('documents'));
 
   els.wordList.addEventListener('click', e => {
-    const btn = e.target.closest('[data-action="edit"]');
-    if (!btn) return;
-    const word = state.words.find(w => w.id === btn.dataset.id);
-    if (word) openEditModal(word, saveWord);
+    const editBtn = e.target.closest('[data-action="edit"]');
+    const delBtn = e.target.closest('[data-action="delete-word"]');
+    if (editBtn) {
+      const word = state.words.find(w => w.id === editBtn.dataset.id);
+      if (word) openEditModal(word, saveWord);
+    } else if (delBtn) {
+      const word = state.words.find(w => w.id === delBtn.dataset.id);
+      if (word) deleteWord(word);
+    }
   });
 
   els.docList.addEventListener('click', e => {
@@ -121,17 +131,17 @@ async function handleImport(files) {
 
       const docId = uid();
       const toEnrich = [];
-      const updatedExisting = [];
+      // Work on copies so we never mutate state.words until the save
+      // to IndexedDB has actually succeeded.
+      const existingUpdates = [];
 
       for (const w of uniqueWords) {
         const existing = byKey.get(w);
         if (existing) {
           if (!existing.foundIn.includes(docId)) {
-            existing.foundIn.push(docId);
-            existing.updatedAt = Date.now();
-            updatedExisting.push(existing);
+            existingUpdates.push({ ...existing, foundIn: [...existing.foundIn, docId], updatedAt: Date.now() });
           }
-        } else {
+        } else if (!toEnrich.includes(w)) {
           toEnrich.push(w);
         }
       }
@@ -153,9 +163,6 @@ async function handleImport(files) {
         updatedAt: Date.now(),
       }));
 
-      state.words.push(...newEntries);
-      await db.bulkPutWords([...newEntries, ...updatedExisting]);
-
       const doc = {
         id: docId,
         name: file.name,
@@ -164,12 +171,22 @@ async function handleImport(files) {
         newlyAdded: newEntries.length,
         duplicatesSkipped: uniqueWords.length - newEntries.length,
       };
-      state.documents.push(doc);
+
+      // Persist first. Only touch in-memory state once storage confirms it
+      // actually went through, so the two never drift apart.
+      await db.bulkPutWords([...newEntries, ...existingUpdates]);
       await db.putDocument(doc);
+
+      for (const updated of existingUpdates) {
+        const idx = state.words.findIndex(w => w.id === updated.id);
+        if (idx !== -1) state.words[idx] = updated;
+      }
+      state.words.push(...newEntries);
+      state.documents.push(doc);
     } catch (err) {
       console.error(err);
-      setProgress(els.progress, `Could not read ${file.name}: ${err.message}`);
-      await new Promise(r => setTimeout(r, 2500));
+      setProgress(els.progress, `Problem importing ${file.name}: ${err.message}`);
+      await new Promise(r => setTimeout(r, 3000));
     }
   }
   setProgress(els.progress, '', false);
@@ -180,26 +197,55 @@ async function handleImport(files) {
 /* ---------- word & document actions ---------- */
 
 async function saveWord(updated) {
-  const idx = state.words.findIndex(w => w.id === updated.id);
-  if (idx !== -1) state.words[idx] = updated;
-  await db.putWord(updated);
-  refreshFilterOptions();
-  render();
+  const collision = state.words.find(w => w.id !== updated.id && w.huKey === updated.huKey);
+  if (collision) {
+    alert(`"${collision.hu}" already exists in your database. Choose a different spelling, or delete the other entry first.`);
+    return;
+  }
+  try {
+    await db.putWord(updated);
+    const idx = state.words.findIndex(w => w.id === updated.id);
+    if (idx !== -1) state.words[idx] = updated;
+    refreshFilterOptions();
+    render();
+  } catch (err) {
+    console.error(err);
+    alert('Could not save that change: ' + err.message);
+  }
+}
+
+async function deleteWord(word) {
+  if (!confirm(`Delete "${word.hu}"? This cannot be undone.`)) return;
+  try {
+    await db.deleteWord(word.id);
+    state.words = state.words.filter(w => w.id !== word.id);
+    refreshFilterOptions();
+    render();
+  } catch (err) {
+    console.error(err);
+    alert('Could not delete that word: ' + err.message);
+  }
 }
 
 async function deleteDocument(docId) {
   if (!confirm('Remove this document? Words it introduced will stay in your database.')) return;
-  state.documents = state.documents.filter(d => d.id !== docId);
-  await db.deleteDocument(docId);
-  for (const w of state.words) {
-    const i = w.foundIn.indexOf(docId);
-    if (i !== -1) {
-      w.foundIn.splice(i, 1);
-      await db.putWord(w);
+  try {
+    await db.deleteDocument(docId);
+    const affected = state.words.filter(w => w.foundIn.includes(docId));
+    const updated = affected.map(w => ({ ...w, foundIn: w.foundIn.filter(id => id !== docId) }));
+    if (updated.length) await db.bulkPutWords(updated);
+
+    state.documents = state.documents.filter(d => d.id !== docId);
+    for (const u of updated) {
+      const idx = state.words.findIndex(w => w.id === u.id);
+      if (idx !== -1) state.words[idx] = u;
     }
+    if (state.activeDocId === docId) state.activeDocId = null;
+    render();
+  } catch (err) {
+    console.error(err);
+    alert('Could not remove that document: ' + err.message);
   }
-  if (state.activeDocId === docId) state.activeDocId = null;
-  render();
 }
 
 /* ---------- backup / restore ---------- */
@@ -220,7 +266,7 @@ async function importData(file) {
     const text = await file.text();
     const data = JSON.parse(text);
     await db.importDatabase(data, { merge: true });
-    state.words = await db.getAllWords();
+    state.words = await db.dedupeWords();
     state.documents = await db.getAllDocuments();
     refreshFilterOptions();
     render();
@@ -276,7 +322,7 @@ function computeFilteredWords() {
 function render() {
   const filtered = computeFilteredWords();
   els.wordCount.textContent = `${filtered.length} word${filtered.length === 1 ? '' : 's'}`;
-  renderWordList(els.wordList, filtered);
+  renderWordList(els.wordList, filtered, docsById());
   renderDocuments(els.docList, state.documents);
 
   if (state.activeDocId) {
@@ -285,12 +331,6 @@ function render() {
     els.activeDocLabel.textContent = doc ? `Showing words from "${doc.name}"` : '';
   } else {
     els.activeDocBanner.classList.remove('visible');
-  }
-}
-
-function registerServiceWorker() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('./service-worker.js').catch(() => {});
   }
 }
 

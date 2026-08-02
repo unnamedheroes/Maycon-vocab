@@ -63,13 +63,62 @@ export async function putWord(word) {
 
 export async function bulkPutWords(words) {
   if (!words.length) return;
-  const store = await getStore(STORE_WORDS, 'readwrite');
-  await Promise.all(words.map(w => reqToPromise(store.put(w))));
+  const database = await openDatabase();
+  return new Promise((resolve, reject) => {
+    const tx = database.transaction(STORE_WORDS, 'readwrite');
+    const store = tx.objectStore(STORE_WORDS);
+    for (const w of words) store.put(w);
+    // Resolve/reject on the *transaction*, not individual requests -- if any
+    // single put() fails (e.g. a uniqueness clash), IndexedDB rolls back the
+    // whole transaction even for requests that already reported success, so
+    // that's the only truthful signal to wait on.
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error || new Error('Save was rolled back.'));
+  });
 }
 
 export async function deleteWord(id) {
   const store = await getStore(STORE_WORDS, 'readwrite');
   return reqToPromise(store.delete(id));
+}
+
+/**
+ * Repairs duplicate rows that share the same huKey (this can happen from an
+ * older version of the app, or from a partially-failed import). Merges each
+ * group into a single record -- keeping the union of "found in" documents
+ * and the first non-empty value for each field -- and removes the extras.
+ * Safe to call every time the app starts; it's a no-op once data is clean.
+ */
+export async function dedupeWords() {
+  const words = await getAllWords();
+  const byKey = new Map();
+  const toDelete = [];
+
+  for (const w of words) {
+    const key = w.huKey || (w.hu || '').toLowerCase();
+    const existing = byKey.get(key);
+    if (!existing) {
+      byKey.set(key, { ...w, huKey: key });
+    } else {
+      byKey.set(key, {
+        ...existing,
+        en: existing.en || w.en,
+        pos: existing.pos || w.pos,
+        cefr: existing.cefr || w.cefr,
+        foundIn: Array.from(new Set([...(existing.foundIn || []), ...(w.foundIn || [])])),
+        updatedAt: Date.now(),
+      });
+      toDelete.push(w.id);
+    }
+  }
+
+  const cleaned = Array.from(byKey.values());
+  if (toDelete.length > 0) {
+    await bulkPutWords(cleaned);
+    await Promise.all(toDelete.map(id => deleteWord(id)));
+  }
+  return cleaned;
 }
 
 export async function getAllDocuments() {

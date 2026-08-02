@@ -6,7 +6,7 @@
 
 const PAGE_SIZE = 150;
 
-export function renderWordList(container, words, page = 1) {
+export function renderWordList(container, words, docsById, page = 1) {
   const visible = words.slice(0, page * PAGE_SIZE);
   container.innerHTML = '';
 
@@ -16,22 +16,26 @@ export function renderWordList(container, words, page = 1) {
   }
 
   const frag = document.createDocumentFragment();
-  for (const w of visible) frag.appendChild(wordCardEl(w));
+  for (const w of visible) frag.appendChild(wordCardEl(w, docsById));
   container.appendChild(frag);
 
   if (visible.length < words.length) {
     const btn = document.createElement('button');
     btn.className = 'load-more';
     btn.textContent = `Show more (${words.length - visible.length} left)`;
-    btn.addEventListener('click', () => renderWordList(container, words, page + 1));
+    btn.addEventListener('click', () => renderWordList(container, words, docsById, page + 1));
     container.appendChild(btn);
   }
 }
 
-function wordCardEl(word) {
+function wordCardEl(word, docsById) {
   const el = document.createElement('div');
   el.className = 'word-card';
-  const foundInCount = (word.foundIn || []).length;
+  const docNames = (word.foundIn || [])
+    .map(id => docsById.get(id))
+    .filter(Boolean)
+    .map(d => d.name);
+  const foundInText = docNames.length ? docNames.join(', ') : '—';
   el.innerHTML = `
     <div class="word-card-main">
       <div class="word-hu">${escapeHtml(word.hu)}</div>
@@ -41,8 +45,11 @@ function wordCardEl(word) {
       ${word.pos ? `<span class="tag tag-pos">${escapeHtml(word.pos)}</span>` : ''}
       ${word.cefr ? `<span class="tag tag-cefr tag-cefr-${escapeAttr(word.cefr)}">${escapeHtml(word.cefr)}</span>` : ''}
     </div>
-    <div class="word-found-in">${foundInCount} document${foundInCount === 1 ? '' : 's'}</div>
-    <button class="edit-btn" data-action="edit" data-id="${escapeAttr(word.id)}" aria-label="Edit ${escapeAttr(word.hu)}">✎</button>
+    <div class="word-found-in" title="${escapeAttr(foundInText)}">Found in: ${escapeHtml(foundInText)}</div>
+    <div class="word-actions">
+      <button class="edit-btn" data-action="edit" data-id="${escapeAttr(word.id)}" aria-label="Edit ${escapeAttr(word.hu)}">✎ Edit</button>
+      <button class="delete-btn" data-action="delete-word" data-id="${escapeAttr(word.id)}" aria-label="Delete ${escapeAttr(word.hu)}">🗑 Delete</button>
+    </div>
   `;
   return el;
 }

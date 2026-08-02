@@ -169,7 +169,32 @@ main { padding: 0 1.25rem; }
   padding: 0.85rem 0.9rem;
   box-shadow: 0 2px 6px rgba(0,0,0,0.25);
 }
-.word-card-main { padding-right: 1.75rem; }
+.word-card-main { padding-right: 0; }
+.word-found-in {
+  font-size: 0.7rem;
+  opacity: 0.6;
+  margin-top: 0.45rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.word-actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.6rem;
+}
+.word-actions button {
+  flex: 1;
+  font-size: 0.75rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--ink);
+  cursor: pointer;
+}
+.word-actions .delete-btn { border-color: var(--accent-rust); color: var(--accent-rust); }
+.word-actions button:hover { opacity: 0.8; }
 .word-hu { font-family: 'Kalam', cursive; font-size: 1.15rem; font-weight: 700; line-height: 1.2; }
 .word-en { font-size: 0.9rem; opacity: 0.8; margin-top: 0.1rem; }
 .word-tags { display: flex; gap: 0.35rem; margin-top: 0.5rem; flex-wrap: wrap; }
@@ -185,20 +210,6 @@ main { padding: 0 1.25rem; }
 .tag-cefr-A1, .tag-cefr-A2 { background: var(--accent-teal); }
 .tag-cefr-B1, .tag-cefr-B2 { background: var(--accent-gold); color: var(--ink); }
 .tag-cefr-C1, .tag-cefr-C2 { background: var(--accent-rust); }
-.word-found-in { font-size: 0.7rem; opacity: 0.5; margin-top: 0.45rem; }
-.edit-btn {
-  position: absolute;
-  top: 0.7rem;
-  right: 0.7rem;
-  background: none;
-  border: none;
-  font-size: 1rem;
-  cursor: pointer;
-  color: var(--ink);
-  opacity: 0.45;
-  padding: 0.2rem;
-}
-.edit-btn:hover { opacity: 1; }
 
 .load-more {
   grid-column: 1 / -1;

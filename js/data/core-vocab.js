@@ -44,3 +44,31 @@ export const SUFFIX_POS_RULES = [
   { test: /(os|es|ös|as|is|ú|ű)$/, pos: 'adjective' },
   { test: /k$/, pos: 'noun' },
 ];
+
+// Simple, everyday English words -- used as an A2 signal when estimating
+// CEFR level from a word's English translation.
+export const EN_BASIC = new Set([
+  'dog', 'cat', 'house', 'water', 'bread', 'book', 'table', 'chair', 'window',
+  'door', 'car', 'school', 'teacher', 'student', 'mother', 'father', 'child',
+  'friend', 'day', 'sun', 'moon', 'star', 'morning', 'evening', 'night', 'red',
+  'blue', 'green', 'yellow', 'black', 'white', 'eat', 'drink', 'sleep', 'go',
+  'come', 'see', 'hear', 'say', 'want', 'know', 'work', 'play', 'learn',
+  'write', 'read', 'look', 'big', 'small', 'good', 'bad', 'hot', 'cold', 'new',
+  'old', 'fast', 'slow', 'happy', 'sad', 'easy', 'hard', 'city', 'town',
+  'country', 'month', 'year', 'week', 'family', 'name', 'time', 'money',
+  'food', 'shop', 'market', 'doctor', 'hospital', 'train', 'bus', 'bike',
+  'street', 'language', 'love', 'like', 'help', 'give', 'take', 'run', 'walk',
+]);
+
+// Common Hungarian case/possessive/plural endings, longest first, used only
+// as a rough "stem length" estimate when no English translation is
+// available to judge difficulty from instead.
+export const HU_SUFFIXES = [
+  'aiknak', 'eiknek', 'jaimnak', 'jeimnek', 'otokban', 'etekben',
+  'oknak', 'eknek', 'aiban', 'eiben', 'jaiban', 'jeiben',
+  'ban', 'ben', 'ból', 'ből', 'ról', 'ről', 'hoz', 'hez', 'höz',
+  'nak', 'nek', 'val', 'vel', 'tól', 'től', 'kor', 'ért', 'ig',
+  'unk', 'ünk', 'juk', 'jük', 'otok', 'etek', 'ötök', 'itok',
+  'ba', 'be', 'ra', 're', 'ok', 'ek', 'ök', 'ak',
+  'k', 't', 'n', 'a', 'e', 'i', 'm', 'd',
+];
