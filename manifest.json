@@ -1,0 +1,13 @@
+{
+  "name": "Word Wall — Hungarian Vocabulary",
+  "short_name": "Word Wall",
+  "description": "A personal offline Hungarian-English vocabulary database built from your own documents.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#2E2114",
+  "theme_color": "#2E2114",
+  "icons": [
+    { "src": "./icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }
+  ]
+}

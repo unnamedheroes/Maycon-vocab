@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Word Wall — Hungarian Vocabulary</title>
+<meta name="description" content="A personal offline Hungarian-English vocabulary database built from your own documents." />
+<meta name="theme-color" content="#2E2114" />
+<link rel="manifest" href="./manifest.json" />
+<link rel="icon" href="./icons/icon.svg" type="image/svg+xml" />
+<link rel="apple-touch-icon" href="./icons/icon.svg" />
+<link rel="stylesheet" href="./css/styles.css" />
+</head>
+<body>
+
+<header class="app-header">
+  <h1>Word Wall</h1>
+  <p class="tagline">Your Hungarian–English vocabulary, built from your own documents.</p>
+</header>
+
+<section class="import-bar">
+  <label class="upload-btn">
+    <input type="file" id="file-input" accept=".docx,.pdf,.txt" multiple hidden />
+    <span>＋ Import document(s)</span>
+  </label>
+  <div id="progress-banner" class="progress-banner"></div>
+</section>
+
+<nav class="view-toggle">
+  <button id="view-words-btn" class="active">Words</button>
+  <button id="view-docs-btn">Documents</button>
+  <div class="spacer"></div>
+  <button id="export-btn" class="ghost">Export backup</button>
+  <label class="ghost import-label">
+    Restore backup
+    <input type="file" id="import-input" accept=".json" hidden />
+  </label>
+</nav>
+
+<div id="active-doc-banner" class="active-doc-banner">
+  <span></span>
+  <button id="clear-doc-filter">Show all words</button>
+</div>
+
+<main>
+  <section id="words-panel" class="panel active">
+    <div class="controls">
+      <input type="search" id="search-input" placeholder="Search Hungarian or English..." />
+      <select id="sort-select">
+        <option value="hu-asc">Sort: Hungarian A–Z</option>
+        <option value="en-asc">Sort: English A–Z</option>
+        <option value="cefr">Sort: CEFR level</option>
+      </select>
+      <span id="word-count" class="word-count"></span>
+    </div>
+    <div class="filter-row">
+      <div class="filter-group">
+        <span class="filter-label">Part of speech</span>
+        <div id="pos-filters" class="chip-row"></div>
+      </div>
+      <div class="filter-group">
+        <span class="filter-label">CEFR level</span>
+        <div id="cefr-filters" class="chip-row"></div>
+      </div>
+    </div>
+    <div id="word-list" class="word-list"></div>
+  </section>
+
+  <section id="docs-panel" class="panel">
+    <div id="doc-list" class="doc-list"></div>
+  </section>
+</main>
+
+<footer class="app-footer">
+  <p>Works fully offline once installed. Translations and part-of-speech lookups use free public services when you're online.</p>
+</footer>
+
+<!-- Document readers, loaded as plain global scripts so they work with no build step -->
+<script src="https://unpkg.com/mammoth@1.8.0/mammoth.browser.min.js"></script>
+<script src="https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js"></script>
+<script>
+  if (window.pdfjsLib) {
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js';
+  }
+</script>
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>
